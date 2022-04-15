@@ -5,6 +5,7 @@
 library(shiny)
 
 ui = fluidPage(
+    tags$head(HTML("<title>Custom extract</title>")),
     titlePanel(h1("Custom extraction of CSAVR and CSAVR-adjacent data")),
     sidebarLayout(
         sidebarPanel(

@@ -34,9 +34,10 @@ extract_pjnz_data = function(pjnz_full) {
   yr_end = dp.inputs.final.year(dp)
 
   geo_info = extract.geo.info(pj)
+  proj_name = extract.proj.name(pj)
 
   rval = list(
-    pjnz = pjnz_name,
+    pjnz = proj_name, # pjnz_name,
     country = country_name(geo_info$iso.code),
     isocode = geo_info$iso.code,
     snuname = geo_info$snu.name,

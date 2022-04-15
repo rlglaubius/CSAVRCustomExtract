@@ -3,8 +3,10 @@
 ## 2022-04-15
 
 library(shiny)
+library(shinyjs)
 
 ui = fluidPage(
+    useShinyjs(),
     tags$head(HTML("<title>Custom extract</title>")),
     titlePanel(h1("Custom extraction of CSAVR and CSAVR-adjacent data")),
     sidebarLayout(
@@ -17,7 +19,7 @@ ui = fluidPage(
                       buttonLabel="Browse...",
                       placeholder="No file selected"),
             h3("2. Download Excel summary"),
-            downloadButton(outputId="download_xlsx", label="Download")
+            disabled(downloadButton(outputId="download_xlsx", label="Download"))
         ),
         mainPanel(
             tableOutput("pjnz_name")
@@ -42,6 +44,10 @@ server = function(input, output, session) {
     summary_xlsx = reactive({
         pjnz_list = pjnz_meta()$datapath
         return(process_pjnzs(pjnz_list))
+    })
+    
+    observeEvent(input$pjnz_list, {
+      enable("download_xlsx")  
     })
     
     output$download_xlsx = downloadHandler(

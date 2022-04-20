@@ -47,6 +47,7 @@ server = function(input, output, session) {
     })
     
     observeEvent(input$pjnz_list, {
+      req(summary_xlsx())
       enable("download_xlsx")  
     })
     

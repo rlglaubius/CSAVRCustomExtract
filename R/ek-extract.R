@@ -11,6 +11,8 @@ process_pjnzs = function(pjnz_list) {
   fm_mort_all = prepare_frame_all(data_list, "mort_all")
   fm_mort_sex = prepare_frame_sex(data_list, "mort_sex")
   fm_mort_age = prepare_frame_age(data_list, "mort_age")
+  fm_diag_cd4 = prepare_frame_cd4(data_list, "diag_cd4")
+  fm_diag_mig = prepare_frame_age(data_list, "migr")
   
   wb = createWorkbook()
   addtab(wb, fm_diag_all, "CaseTot")
@@ -19,35 +21,37 @@ process_pjnzs = function(pjnz_list) {
   addtab(wb, fm_mort_all, "DeathTot")
   addtab(wb, fm_mort_sex, "DeathM-F")
   addtab(wb, fm_mort_age, "DeathAge")
-  # addtab(wb, prepare_frame_cd4(data_list, "diag_cd4"), "CD4")
-  # addtab(wb, prepare_frame_age(data_list, "migr"), "ImmigrPrevPos")
-  # 
-  # inci.tname = "IncidTrendRule"
-  # inci.frame = prepare_frame_meta(data_list, check_incidence)
-  # addtab(wb, inci.frame, inci.tname)
-  # ci = 1 + ncol(inci.frame)
-  # for (ri in 1:nrow(inci.frame)) {
-  #   expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
-  #   writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
-  # }
-  # writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
-  # 
-  # addtab(wb, prepare_frame_meta(data_list, check_irr_state), "SexAgeIRR")
-  # 
-  # know.tname = "KOSTrendRule"
-  # know.frame = prepare_frame_meta(data_list, check_knowledge)
-  # addtab(wb, know.frame, know.tname)
-  # ci = 1 + ncol(know.frame)
-  # for (ri in 1:nrow(know.frame)) {
-  #   expr = sprintf("AND(%s%d>=1,%s%d)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
-  #   writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
-  # }
-  # writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
+  addtab(wb, fm_diag_cd4, "CD4")
+  addtab(wb, fm_diag_mig, "ImmigrPrevPos")
+
+  inci.tname = "IncidTrendRule"
+  inci.frame = prepare_frame_meta(data_list, check_incidence)
+  addtab(wb, inci.frame, inci.tname)
+  ci = 1 + ncol(inci.frame)
+  for (ri in 1:nrow(inci.frame)) {
+    expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
+  }
+  writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
+
+  addtab(wb, prepare_frame_meta(data_list, check_irr_state), "SexAgeIRR")
+
+  know.tname = "KOSTrendRule"
+  know.frame = prepare_frame_meta(data_list, check_knowledge)
+  addtab(wb, know.frame, know.tname)
+  ci = 1 + ncol(know.frame)
+  for (ri in 1:nrow(know.frame)) {
+    expr = sprintf("AND(%s%d>=1,%s%d)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
+  }
+  writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
   
-  add_crosscheck_sex(wb, "CheckCaseM-F",  "CaseTot",  "CaseM-F",  fm_diag_all, fm_diag_sex)
-  add_crosscheck_age(wb, "CheckCaseAge",  "CaseM-F",  "CaseAge",  fm_diag_sex, fm_diag_age)
-  add_crosscheck_sex(wb, "CheckDeathM-F", "DeathTot", "DeathM-F", fm_mort_all, fm_mort_sex)
-  add_crosscheck_age(wb, "CheckDeathAge", "DeathM-F", "DeathAge", fm_mort_sex, fm_mort_age)
+  add_crosscheck_all(wb, "CheckCaseM-F",       "CaseTot",  "CaseM-F",       fm_diag_all, fm_diag_sex)
+  add_crosscheck_sex(wb, "CheckCaseAge",       "CaseM-F",  "CaseAge",       fm_diag_sex, fm_diag_age)
+  add_crosscheck_all(wb, "CheckDeathM-F",      "DeathTot", "DeathM-F",      fm_mort_all, fm_mort_sex)
+  add_crosscheck_sex(wb, "CheckDeathAge",      "DeathM-F", "DeathAge",      fm_mort_sex, fm_mort_age)
+  add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4)
+  add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig)
   
   return(wb)
 }
@@ -232,8 +236,8 @@ prepare_frame_meta = function(pjnz_data, fn) {
   return(dplyr::left_join(meta, func_flat, by=c("PJNZ")))
 }
 
-## Add a tab to the workbook that compares overall numbers of diagnoses or
-## deaths to data entered by sex. This does not do the comparison, but rather
+## Add a tab to the workbook that compares numbers of diagnoses or deaths by sex
+## to overall input numbers. This does not do the comparison, but rather
 ## produces formulas that do the comparison in Excel.
 ## 
 ## tab_name New tab name
@@ -241,7 +245,7 @@ prepare_frame_meta = function(pjnz_data, fn) {
 ## tab_comp Tab with comparison data
 ## dat_base Data frame of baseline data, used for establishing formula ranges
 ## dat_comp Data frame of comparison data, used for establishing formula ranges
-add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, dat_comp) {
+add_crosscheck_all = function(workbook, tab_name, tab_base, tab_comp, dat_base, dat_comp) {
   meta = dat_base[,1:6]
   cols_meta = ncol(meta)
   
@@ -275,8 +279,8 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
   }
 }
 
-## Add a tab to the workbook that compares numbers of diagnoses or deaths by sex
-## and age to data entered by sex. This does not do the comparison, but rather
+## Add a tab to the workbook that compares numbers of diagnoses or deaths by age and sex
+## to input numbers by sex. This does not do the comparison, but rather
 ## produces formulas that do the comparison in Excel.
 ## 
 ## tab_name New tab name
@@ -284,7 +288,7 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
 ## tab_comp Tab with comparison data
 ## dat_base Data frame of baseline data, used for establishing formula ranges
 ## dat_comp Data frame of comparison data, used for establishing formula ranges
-add_crosscheck_age = function(workbook, tab_name, tab_base, tab_comp, dat_base, dat_comp) {
+add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, dat_comp) {
   meta = dat_base[,1:6]
   cols_meta = ncol(meta)
   

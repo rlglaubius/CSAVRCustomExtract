@@ -143,7 +143,8 @@ prepare_frame_sex = function(pjnz_data, indicator) {
   meta$Age = "15+"
   data_long = prepare_flatdata(pjnz_data, indicator)
   data_wide = reshape2::dcast(data_long, PJNZ+Sex~Year, value.var="Value")
-  return(dplyr::left_join(meta, data_wide, by=c("PJNZ")))
+  data_join = dplyr::left_join(meta, data_wide, by=c("PJNZ"))
+  return(data_join[,c("PJNZ", "ISO3", "Country", "SNU", "Sex", "Age", colnames(data_join)[6:ncol(data_join)])])
 }
 
 prepare_frame_age = function(pjnz_data, indicator) {

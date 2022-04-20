@@ -14,7 +14,7 @@ process_pjnzs = function(pjnz_list) {
   addtab(wb, prepare_frame_age(data_list, "mort_age"), "DeathAge")
   addtab(wb, prepare_frame_cd4(data_list, "diag_cd4"), "CD4")
   addtab(wb, prepare_frame_age(data_list, "migr"), "ImmigrPrevPos")
-  
+
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
   addtab(wb, inci.frame, inci.tname)
@@ -23,10 +23,20 @@ process_pjnzs = function(pjnz_list) {
     expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
     writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
   }
-  writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend?", startCol=ci, startRow=1)
-  
+  writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
+
   addtab(wb, prepare_frame_meta(data_list, check_irr_state), "SexAgeIRR")
-  addtab(wb, prepare_frame_meta(data_list, check_knowledge), "KOSTrendRule")
+  
+  know.tname = "KOSTrendRule"
+  know.frame = prepare_frame_meta(data_list, check_knowledge)
+  addtab(wb, know.frame, know.tname)
+  ci = 1 + ncol(know.frame)
+  for (ri in 1:nrow(know.frame)) {
+    expr = sprintf("AND(%s%d>=1,%s%d)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
+  }
+  writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
+  
   return(wb)
 }
 

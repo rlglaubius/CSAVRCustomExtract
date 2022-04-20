@@ -26,6 +26,12 @@ country_name = function(iso3) {
   return(cnames)
 }
 
+country_alpha = function(iso3) {
+  isostr = sprintf("%03d", as.numeric(iso3))
+  codes = ISO_3166_1$Alpha_3[match(isostr, ISO_3166_1$Numeric)]
+  return(codes)
+}
+
 extract_pjnz_data = function(pjnz_full) {
   pjnz_name = basename(pjnz_full)
   pj = read.raw.pjn(pjnz_full)
@@ -39,7 +45,7 @@ extract_pjnz_data = function(pjnz_full) {
   rval = list(
     pjnz = proj_name, # pjnz_name,
     country = country_name(geo_info$iso.code),
-    isocode = geo_info$iso.code,
+    isocode = country_alpha(geo_info$iso.code),
     snuname = geo_info$snu.name,
 
     inci_model = dp.inputs.incidence.model(dp),

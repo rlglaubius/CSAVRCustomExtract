@@ -14,7 +14,17 @@ process_pjnzs = function(pjnz_list) {
   addtab(wb, prepare_frame_age(data_list, "mort_age"), "DeathAge")
   addtab(wb, prepare_frame_cd4(data_list, "diag_cd4"), "CD4")
   addtab(wb, prepare_frame_age(data_list, "migr"), "ImmigrPrevPos")
-  addtab(wb, prepare_frame_meta(data_list, check_incidence), "IncidTrendRule")
+  
+  inci.tname = "IncidTrendRule"
+  inci.frame = prepare_frame_meta(data_list, check_incidence)
+  addtab(wb, inci.frame, inci.tname)
+  ci = 1 + ncol(inci.frame)
+  for (ri in 1:nrow(inci.frame)) {
+    expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
+  }
+  writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend?", startCol=ci, startRow=1)
+  
   addtab(wb, prepare_frame_meta(data_list, check_irr_state), "SexAgeIRR")
   addtab(wb, prepare_frame_meta(data_list, check_knowledge), "KOSTrendRule")
   return(wb)
@@ -54,6 +64,7 @@ extract_pjnz_data = function(pjnz_full) {
 
     irr_custom  = dp.inputs.irr.custom(dp),
     irr_pattern = dp.inputs.irr.pattern(dp),
+    irr_epp     = dp.inputs.irr.sex.from.epp(dp),
 
     diag_all = dp.inputs.csavr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     diag_sex = dp.inputs.csavr.diagnoses.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
@@ -88,7 +99,12 @@ prepare_flatdata = function(pjnz_data, item_name) {
 }
 
 addtab = function(workbook, tabdata, tabname) {
+  ## The header style is applied to twice as many columns as are present in
+  ## tabdata. This is a workaround because (1) we may add more columns later and
+  ## (2) openxlsx currently has no way to style an entire row or column
+  headerStyle = createStyle(wrapText=TRUE, textDecoration="bold")
   addWorksheet(workbook, tabname)
+  addStyle(workbook, sheet=tabname, headerStyle, rows=1, cols=1:(2*ncol(tabdata)))
   writeData(workbook, tabname, tabdata)
 }
 
@@ -164,7 +180,8 @@ check_irr_state = function(dat) {
              "CSAVR Sex IRRs selected?",
              "CSAVR Age IRRs selected?",
              "AIM IRR pattern",
-             "AIM IRR custom selected?")
+             "AIM IRR custom selected?",
+             "AIM Sex IRRs from EPP or AEM?")
   irr_opts = dat$csavr_irrs[dat$csavr_irrs$Model == dat$inci_curve,]
 
   rval = data.frame(PJNZ    = dat$pjnz,
@@ -173,7 +190,8 @@ check_irr_state = function(dat) {
                     SexIRRs = irr_opts$Sex[1],
                     AgeIRRs = irr_opts$Age[1],
                     AIMPattern = dat$irr_pattern,
-                    AIMCustom  = dat$irr_custom)
+                    AIMCustom  = dat$irr_custom,
+                    SexIRREPP  = dat$irr_epp)
   colnames(rval) = cnames
   return(rval)
 }

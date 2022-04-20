@@ -15,10 +15,10 @@ process_pjnzs = function(pjnz_list) {
   wb = createWorkbook()
   addtab(wb, fm_diag_all, "CaseTot")
   addtab(wb, fm_diag_sex, "CaseM-F")
-  # addtab(wb, fm_diag_age, "CaseAge")
+  addtab(wb, fm_diag_age, "CaseAge")
   addtab(wb, fm_mort_all, "DeathTot")
   addtab(wb, fm_mort_sex, "DeathM-F")
-  # addtab(wb, fm_mort_age, "DeathAge")
+  addtab(wb, fm_mort_age, "DeathAge")
   # addtab(wb, prepare_frame_cd4(data_list, "diag_cd4"), "CD4")
   # addtab(wb, prepare_frame_age(data_list, "migr"), "ImmigrPrevPos")
   # 
@@ -44,9 +44,10 @@ process_pjnzs = function(pjnz_list) {
   # }
   # writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
   
-  add_crosscheck_sex(wb, "CheckCaseSex",  "CaseTot",  "CaseM-F",  fm_diag_all, fm_diag_sex)
-  add_crosscheck_sex(wb, "CheckDeathSex", "DeathTot", "DeathM-F", fm_mort_all, fm_mort_sex)
-  
+  add_crosscheck_sex(wb, "CheckCaseM-F",  "CaseTot",  "CaseM-F",  fm_diag_all, fm_diag_sex)
+  add_crosscheck_age(wb, "CheckCaseAge",  "CaseM-F",  "CaseAge",  fm_diag_sex, fm_diag_age)
+  add_crosscheck_sex(wb, "CheckDeathM-F", "DeathTot", "DeathM-F", fm_mort_all, fm_mort_sex)
+  add_crosscheck_age(wb, "CheckDeathAge", "DeathM-F", "DeathAge", fm_mort_sex, fm_mort_age)
   
   return(wb)
 }
@@ -254,7 +255,7 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
   ## Write formulas. Not idiomatic R, but the code is unreadable enough without
   ## vectorizing it
   for (ri in 1:nrow(dat_base)) {
-    for (ci in 1:ncol(dat_base)) {
+    for (ci in 1:ncol(temp)) {
       check_pjnz = sprintf("$A%d", ri+1)
       
       ## Create a formula that sums values from tab_base columns
@@ -266,6 +267,52 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
       range_comp_pjnz = sprintf("'%s'!$A$2:$A$%d", tab_comp, nrow(dat_comp)+1)
       range_comp_vals = sprintf("'%s'!%s$2:%s$%d", tab_comp, int2col(ci+cols_meta), int2col(ci+cols_meta), nrow(dat_comp)+1)
       value_comp = sprintf("SUMIF(%s,%s,%s)", range_comp_pjnz, check_pjnz, range_comp_vals)
+      
+      expr = sprintf("IF(%s>0,%s/%s,\"\")", value_comp, value_comp, value_base)
+      
+      writeFormula(workbook, sheet=tab_name, x=expr, startCol=ci+ncol(meta), startRow=ri+1)
+    }
+  }
+}
+
+## Add a tab to the workbook that compares numbers of diagnoses or deaths by sex
+## and age to data entered by sex. This does not do the comparison, but rather
+## produces formulas that do the comparison in Excel.
+## 
+## tab_name New tab name
+## tab_base Tab with baseline data
+## tab_comp Tab with comparison data
+## dat_base Data frame of baseline data, used for establishing formula ranges
+## dat_comp Data frame of comparison data, used for establishing formula ranges
+add_crosscheck_age = function(workbook, tab_name, tab_base, tab_comp, dat_base, dat_comp) {
+  meta = dat_base[,1:6]
+  cols_meta = ncol(meta)
+  
+  ## temporary data to establish column names and header style
+  temp = dat_base[,(cols_meta+1):ncol(dat_base)]
+  temp[1:nrow(temp),1:ncol(temp)] = NA
+  
+  ## Add a tab with placeholder (missing) data
+  addtab(workbook, cbind(meta, temp), tabname=tab_name)
+  
+  ## Write formulas. Not idiomatic R, but the code is unreadable enough without
+  ## vectorizing it
+  for (ri in 1:nrow(dat_base)) {
+    for (ci in 1:ncol(temp)) {
+      check_pjnz = sprintf("$A%d", ri+1)
+      check_sex  = sprintf("$E%d", ri+1)
+      
+      ## Create a formula that sums values from tab_base columns
+      range_base_pjnz = sprintf("'%s'!$A$2:$A$%d", tab_base, nrow(dat_base)+1)
+      range_base_sex  = sprintf("'%s'!$E$2:$E$%d", tab_base, nrow(dat_base)+1)
+      range_base_vals = sprintf("'%s'!%s$2:%s$%d", tab_base, int2col(ci+cols_meta), int2col(ci+cols_meta), nrow(dat_base)+1)
+      value_base = sprintf("SUMIFS(%s,%s,%s,%s,%s)", range_base_vals, range_base_pjnz, check_pjnz, range_base_sex, check_sex)
+      
+      ## Create a formula that sums values from tab_comp columns
+      range_comp_pjnz = sprintf("'%s'!$A$2:$A$%d", tab_comp, nrow(dat_comp)+1)
+      range_comp_sex  = sprintf("'%s'!$E$2:$E$%d", tab_comp, nrow(dat_comp)+1)
+      range_comp_vals = sprintf("'%s'!%s$2:%s$%d", tab_comp, int2col(ci+cols_meta), int2col(ci+cols_meta), nrow(dat_comp)+1)
+      value_comp = sprintf("SUMIFS(%s,%s,%s,%s,%s)", range_comp_vals, range_comp_pjnz, check_pjnz, range_comp_sex, check_sex)
       
       expr = sprintf("IF(%s>0,%s/%s,\"\")", value_comp, value_comp, value_base)
       

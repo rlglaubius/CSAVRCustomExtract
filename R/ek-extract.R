@@ -152,6 +152,7 @@ prepare_frame_sex = function(pjnz_data, indicator) {
   
   ## standardize column ordering
   data_join[,1:6] = data_join[,c("PJNZ", "ISO3", "Country", "SNU", "Sex", "Age")]
+  colnames(data_join)[1:6] = c("PJNZ", "ISO3", "Country", "SNU", "Sex", "Age")
   
   return(data_join)
 }

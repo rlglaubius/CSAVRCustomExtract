@@ -15,34 +15,36 @@ process_pjnzs = function(pjnz_list) {
   fm_diag_mig = prepare_frame_age(data_list, "migr")
   
   wb = createWorkbook()
-  addtab(wb, fm_diag_all, "CaseTot")
-  addtab(wb, fm_diag_sex, "CaseM-F")
-  addtab(wb, fm_diag_age, "CaseAge")
-  addtab(wb, fm_mort_all, "DeathTot")
-  addtab(wb, fm_mort_sex, "DeathM-F")
-  addtab(wb, fm_mort_age, "DeathAge")
-  addtab(wb, fm_diag_cd4, "CD4")
-  addtab(wb, fm_diag_mig, "ImmigrPrevPos")
+  addtab(wb, fm_diag_all, "CaseTot",  6)
+  addtab(wb, fm_diag_sex, "CaseM-F",  6)
+  addtab(wb, fm_diag_age, "CaseAge",  6)
+  addtab(wb, fm_mort_all, "DeathTot", 6)
+  addtab(wb, fm_mort_sex, "DeathM-F", 6)
+  addtab(wb, fm_mort_age, "DeathAge", 6)
+  addtab(wb, fm_diag_cd4, "CD4",      6)
+  addtab(wb, fm_diag_mig, "ImmigrPrevPos", 6)
 
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
-  addtab(wb, inci.frame, inci.tname)
+  addtab(wb, inci.frame, inci.tname, 4)
   ci = 1 + ncol(inci.frame)
   for (ri in 1:nrow(inci.frame)) {
     expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
     writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
+    conditionalFormatting(wb, sheet=inci.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
   writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
 
-  addtab(wb, prepare_frame_meta(data_list, check_irr_state), "SexAgeIRR")
+  addtab(wb, prepare_frame_meta(data_list, check_opt_state), "Parameters", 4)
 
   know.tname = "KOSTrendRule"
   know.frame = prepare_frame_meta(data_list, check_knowledge)
-  addtab(wb, know.frame, know.tname)
+  addtab(wb, know.frame, know.tname, 4)
   ci = 1 + ncol(know.frame)
   for (ri in 1:nrow(know.frame)) {
     expr = sprintf("AND(%s%d>=1,%s%d)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
     writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
+    conditionalFormatting(wb, sheet=know.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
   writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
   
@@ -86,6 +88,8 @@ extract_pjnz_data = function(pjnz_full) {
 
     inci_model = dp.inputs.incidence.model(dp),
     inci_curve = dp.inputs.csavr.model(dp),
+    
+    csavr_data = dp.inputs.csavr.data.options(dp, direction="wide"),
     csavr_irrs = dp.inputs.csavr.irr.options(dp, direction="wide"),
 
     irr_custom  = dp.inputs.irr.custom(dp),
@@ -101,7 +105,9 @@ extract_pjnz_data = function(pjnz_full) {
     mort_sex = dp.inputs.csavr.deaths.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     mort_age = dp.inputs.csavr.deaths.sex.age(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
 
-    migr = dp.inputs.csavr.migr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+    migr = dp.inputs.csavr.migr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    
+    kos_source = dp.inputs.kos.source(dp, direction="long")
   )
   return(rval)
 }
@@ -124,7 +130,7 @@ prepare_flatdata = function(pjnz_data, item_name) {
   return(dplyr::bind_rows(list_data, .id="PJNZ"))
 }
 
-addtab = function(workbook, tabdata, tabname) {
+addtab = function(workbook, tabdata, tabname, freezeRows=NULL) {
   ## The header style is applied to twice as many columns as are present in
   ## tabdata. This is a workaround because (1) we may add more columns later and
   ## (2) openxlsx currently has no way to style an entire row or column
@@ -132,6 +138,9 @@ addtab = function(workbook, tabdata, tabname) {
   addWorksheet(workbook, tabname)
   addStyle(workbook, sheet=tabname, headerStyle, rows=1, cols=1:(2*ncol(tabdata)))
   writeData(workbook, tabname, tabdata)
+  if (is.finite(freezeRows)) {
+    freezePane(workbook, tabname, firstActiveRow=2, firstActiveCol=freezeRows+1)
+  }
 }
 
 prepare_frame_all = function(pjnz_data, indicator) {
@@ -205,25 +214,34 @@ check_knowledge = function(dat) {
   return(rval)
 }
 
-check_irr_state = function(dat) {
+check_opt_state = function(dat) {
   cnames = c("PJNZ",
              "Incidence option",
              "CSAVR model",
-             "CSAVR Sex IRRs selected?",
-             "CSAVR Age IRRs selected?",
+             "CSAVR: new diagnoses selected?",
+             "CSAVR: AIDS deaths selected?",
+             "CSAVR: CD4 distribution selected?",
+             "CSAVR: Sex IRRs selected?",
+             "CSAVR: Age IRRs selected?",
              "AIM IRR pattern",
              "AIM IRR custom selected?",
-             "AIM Sex IRRs from EPP or AEM?")
+             "AIM Sex IRRs from EPP or AEM?",
+             "KoS source")
   irr_opts = dat$csavr_irrs[dat$csavr_irrs$Model == dat$inci_curve,]
 
   rval = data.frame(PJNZ    = dat$pjnz,
                     Model   = dat$inci_model,
                     Curve   = dat$inci_curve,
+                    UseDiag = dat$csavr_data[1],
+                    UseMort = dat$csavr_data[2],
+                    UseCD4  = dat$csavr_data[3],
                     SexIRRs = irr_opts$Sex[1],
                     AgeIRRs = irr_opts$Age[1],
                     AIMPattern = dat$irr_pattern,
                     AIMCustom  = dat$irr_custom,
-                    SexIRREPP  = dat$irr_epp)
+                    SexIRREPP  = dat$irr_epp,
+                    KoSSource  = dat$kos_source
+                    )
   colnames(rval) = cnames
   return(rval)
 }
@@ -255,7 +273,7 @@ add_crosscheck_all = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
   temp[1:nrow(temp),1:ncol(temp)] = NA
   
   ## Add a tab with placeholder (missing) data
-  addtab(workbook, cbind(meta, temp), tabname=tab_name)
+  addtab(workbook, cbind(meta, temp), tabname=tab_name, cols_meta)
   
   ## Write formulas. Not idiomatic R, but the code is unreadable enough without
   ## vectorizing it
@@ -278,6 +296,8 @@ add_crosscheck_all = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
       writeFormula(workbook, sheet=tab_name, x=expr, startCol=ci+ncol(meta), startRow=ri+1)
     }
   }
+  valueStyle = createStyle(numFmt="0.000%")
+  addStyle(workbook, sheet=tab_name, valueStyle, rows=1+1:nrow(dat_base), cols=cols_meta+1+1:ncol(temp), gridExpand=TRUE)
 }
 
 ## Add a tab to the workbook that compares numbers of diagnoses or deaths by age and sex
@@ -298,7 +318,7 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
   temp[1:nrow(temp),1:ncol(temp)] = NA
   
   ## Add a tab with placeholder (missing) data
-  addtab(workbook, cbind(meta, temp), tabname=tab_name)
+  addtab(workbook, cbind(meta, temp), tabname=tab_name, cols_meta)
   
   ## Write formulas. Not idiomatic R, but the code is unreadable enough without
   ## vectorizing it
@@ -324,5 +344,7 @@ add_crosscheck_sex = function(workbook, tab_name, tab_base, tab_comp, dat_base, 
       writeFormula(workbook, sheet=tab_name, x=expr, startCol=ci+ncol(meta), startRow=ri+1)
     }
   }
+  valueStyle = createStyle(numFmt="0.000%")
+  addStyle(workbook, sheet=tab_name, valueStyle, rows=1+1:nrow(dat_base), cols=cols_meta+1+1:ncol(temp), gridExpand=TRUE)
 }
 

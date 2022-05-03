@@ -107,6 +107,10 @@ extract_pjnz_data = function(pjnz_full) {
 
     migr = dp.inputs.csavr.migr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     
+    frr_loc = dp.inputs.hiv.frr.location(dp, direction="long"),
+    
+    mort_mult = dp.inputs.adult.hiv.mortality.art.scale(dp, direction="long"),
+    
     kos_source = dp.inputs.kos.source(dp, direction="long")
   )
   return(rval)
@@ -226,7 +230,9 @@ check_opt_state = function(dat) {
              "AIM IRR pattern",
              "AIM IRR custom selected?",
              "AIM Sex IRRs from EPP or AEM?",
-             "KoS source")
+             "KoS source",
+             "On-ART mortality scale factor",
+             "HIV FRR local adjustment factor")
   irr_opts = dat$csavr_irrs[dat$csavr_irrs$Model == dat$inci_curve,]
 
   rval = data.frame(PJNZ    = dat$pjnz,
@@ -240,7 +246,9 @@ check_opt_state = function(dat) {
                     AIMPattern = dat$irr_pattern,
                     AIMCustom  = dat$irr_custom,
                     SexIRREPP  = dat$irr_epp,
-                    KoSSource  = dat$kos_source
+                    KoSSource  = dat$kos_source,
+                    MortScale  = dat$mort_mult,
+                    FRRLocal   = dat$frr_loc
                     )
   colnames(rval) = cnames
   return(rval)

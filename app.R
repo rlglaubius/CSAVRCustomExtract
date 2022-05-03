@@ -42,8 +42,18 @@ server = function(input, output, session) {
     })
     
     summary_xlsx = reactive({
+      withProgress(message = "Extracting PJNZ data", value=0, {
         pjnz_list = pjnz_meta()$datapath
-        return(process_pjnzs(pjnz_list))
+        pjnz_data = list()
+        for (k in 1:length(pjnz_list)) {
+          pjnz_data[[k]] = extract_pjnz_data(pjnz_list[[k]])
+          incProgress(1 / length(pjnz_data), detail=sprintf("File %d of %d", k, length(pjnz_list)))
+        }
+      })
+      withProgress(message = "Building summary workbook", value=0, {
+        pjnz_summ = process_pjnzs(pjnz_data)
+      })
+      return(pjnz_summ)
     })
     
     observeEvent(input$pjnz_list, {

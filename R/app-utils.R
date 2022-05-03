@@ -2,9 +2,10 @@ library(ISOcodes)
 library(openxlsx)
 library(SpectrumUtils)
 
-process_pjnzs = function(pjnz_list) {
-  data_list = lapply(pjnz_list, extract_pjnz_data)
-  
+process_pjnzs = function(data_list) {
+  tabi = 0
+  ntab = 17
+
   fm_diag_all = prepare_frame_all(data_list, "diag_all")
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
   fm_diag_age = prepare_frame_age(data_list, "diag_age")
@@ -15,14 +16,14 @@ process_pjnzs = function(pjnz_list) {
   fm_diag_mig = prepare_frame_age(data_list, "migr")
   
   wb = createWorkbook()
-  addtab(wb, fm_diag_all, "CaseTot",  6)
-  addtab(wb, fm_diag_sex, "CaseM-F",  6)
-  addtab(wb, fm_diag_age, "CaseAge",  6)
-  addtab(wb, fm_mort_all, "DeathTot", 6)
-  addtab(wb, fm_mort_sex, "DeathM-F", 6)
-  addtab(wb, fm_mort_age, "DeathAge", 6)
-  addtab(wb, fm_diag_cd4, "CD4",      6)
-  addtab(wb, fm_diag_mig, "ImmigrPrevPos", 6)
+  addtab(wb, fm_diag_all, "CaseTot",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_diag_sex, "CaseM-F",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_diag_age, "CaseAge",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_mort_all, "DeathTot", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_mort_sex, "DeathM-F", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_mort_age, "DeathAge", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_diag_cd4, "CD4",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_diag_mig, "ImmigrPrevPos", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
 
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
@@ -34,8 +35,10 @@ process_pjnzs = function(pjnz_list) {
     conditionalFormatting(wb, sheet=inci.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
   writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
+  tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
 
   addtab(wb, prepare_frame_meta(data_list, check_opt_state), "Parameters", 4)
+  tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
 
   know.tname = "KOSTrendRule"
   know.frame = prepare_frame_meta(data_list, check_knowledge)
@@ -47,13 +50,14 @@ process_pjnzs = function(pjnz_list) {
     conditionalFormatting(wb, sheet=know.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
   writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
+  tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
-  add_crosscheck_all(wb, "CheckCaseM-F",       "CaseTot",  "CaseM-F",       fm_diag_all, fm_diag_sex)
-  add_crosscheck_sex(wb, "CheckCaseAge",       "CaseM-F",  "CaseAge",       fm_diag_sex, fm_diag_age)
-  add_crosscheck_all(wb, "CheckDeathM-F",      "DeathTot", "DeathM-F",      fm_mort_all, fm_mort_sex)
-  add_crosscheck_sex(wb, "CheckDeathAge",      "DeathM-F", "DeathAge",      fm_mort_sex, fm_mort_age)
-  add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4)
-  add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig)
+  add_crosscheck_all(wb, "CheckCaseM-F",       "CaseTot",  "CaseM-F",       fm_diag_all, fm_diag_sex); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  add_crosscheck_sex(wb, "CheckCaseAge",       "CaseM-F",  "CaseAge",       fm_diag_sex, fm_diag_age); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  add_crosscheck_all(wb, "CheckDeathM-F",      "DeathTot", "DeathM-F",      fm_mort_all, fm_mort_sex); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  add_crosscheck_sex(wb, "CheckDeathAge",      "DeathM-F", "DeathAge",      fm_mort_sex, fm_mort_age); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   return(wb)
 }

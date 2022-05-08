@@ -115,6 +115,9 @@ extract_pjnz_data = function(pjnz_full) {
     
     mort_mult = dp.inputs.adult.hiv.mortality.art.scale(dp, direction="long"),
     
+    epp_adj_can = dp.inputs.epp.adjustment.enabled(dp, direction="long"),
+    epp_adj_max = dp.inputs.epp.adjustment.cap(dp, direction="long"),
+    
     kos_source = dp.inputs.kos.source(dp, direction="long")
   )
   return(rval)
@@ -236,7 +239,9 @@ check_opt_state = function(dat) {
              "AIM Sex IRRs from EPP or AEM?",
              "KoS source",
              "On-ART mortality scale factor",
-             "HIV FRR local adjustment factor")
+             "HIV FRR local adjustment factor",
+             "EPP: AIM can adjust incidence?",
+             "EPP: Incidence adjustment cap")
   irr_opts = dat$csavr_irrs[dat$csavr_irrs$Model == dat$inci_curve,]
 
   rval = data.frame(PJNZ    = dat$pjnz,
@@ -252,7 +257,9 @@ check_opt_state = function(dat) {
                     SexIRREPP  = dat$irr_epp,
                     KoSSource  = dat$kos_source,
                     MortScale  = dat$mort_mult,
-                    FRRLocal   = dat$frr_loc
+                    FRRLocal   = dat$frr_loc,
+                    CanAdjust  = dat$epp_adj_can,
+                    MaxAdjust  = dat$epp_adj_max
                     )
   colnames(rval) = cnames
   return(rval)

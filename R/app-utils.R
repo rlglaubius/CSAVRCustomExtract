@@ -6,10 +6,10 @@ process_pjnzs = function(data_list) {
   tabi = 0
   ntab = 17
 
-  fm_diag_all = prepare_frame_all(data_list, "diag_all")
+  fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
   fm_diag_age = prepare_frame_age(data_list, "diag_age")
-  fm_mort_all = prepare_frame_all(data_list, "mort_all")
+  fm_mort_all = prepare_frame_all(data_list, "mort_all", keep_zeros=FALSE)
   fm_mort_sex = prepare_frame_sex(data_list, "mort_sex")
   fm_mort_age = prepare_frame_age(data_list, "mort_age")
   fm_diag_cd4 = prepare_frame_cd4(data_list, "diag_cd4")
@@ -30,7 +30,7 @@ process_pjnzs = function(data_list) {
   addtab(wb, inci.frame, inci.tname, 4)
   ci = 1 + ncol(inci.frame)
   for (ri in 1:nrow(inci.frame)) {
-    expr = sprintf("AND(%s%d>=8,%s%d>=2019)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=8,%s%d>=2019),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
     writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
     conditionalFormatting(wb, sheet=inci.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
@@ -45,7 +45,7 @@ process_pjnzs = function(data_list) {
   addtab(wb, know.frame, know.tname, 4)
   ci = 1 + ncol(know.frame)
   for (ri in 1:nrow(know.frame)) {
-    expr = sprintf("AND(%s%d>=1,%s%d)", int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+    expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=1,%s%d),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
     writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
     conditionalFormatting(wb, sheet=know.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
   }
@@ -154,11 +154,14 @@ addtab = function(workbook, tabdata, tabname, freezeRows=NULL) {
   }
 }
 
-prepare_frame_all = function(pjnz_data, indicator) {
+prepare_frame_all = function(pjnz_data, indicator, keep_zeros=TRUE) {
   meta = prepare_metadata(pjnz_data)
   meta$Sex = "Male+Female"
   meta$Age = "15+"
   data_long = prepare_flatdata(pjnz_data, indicator)
+  if (!keep_zeros) {
+    data_long$Value[data_long$Value==0] = NA
+  }
   data_wide = reshape2::dcast(data_long, PJNZ~Year, value.var="Value")
   return(dplyr::left_join(meta, data_wide, by=c("PJNZ")))
 }
@@ -197,13 +200,15 @@ check_incidence = function(dat) {
   first_year = 1990
   final_year = 2021
   cnames = c("PJNZ",
+             "Incidence option",
              sprintf("Years of death data during %s-%s", first_year, final_year),
              sprintf("Latest death data data available during %s-%s", first_year, final_year))
   
-  sset = subset(dat$mort_all, is.finite(Value) & Year >= first_year & Year <= final_year)
+  sset = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
   rval = data.frame(PJNZ  = dat$pjnz,
+                    Model = dat$inci_model,
                     Years = nrow(sset),
-                    Final = max(sset$Year))
+                    Final = ifelse(nrow(sset) > 0, max(sset$Year), NA))
   colnames(rval) = cnames
   return(rval)
 }
@@ -213,12 +218,14 @@ check_knowledge = function(dat) {
   first_year = 2019
   final_year = 2021
   cnames = c("PJNZ",
+             "Incidence option",
              sprintf("Years of deaths data during %s-%s", first_year, final_year),
              "New diagnoses entered in 2019?")
   
-  sset_mort = subset(dat$mort_all, is.finite(Value) & Year >= first_year & Year <= final_year)
-  sset_diag = subset(dat$diag_all, is.finite(Value) & Year == 2019)
+  sset_mort = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  sset_diag = subset(dat$diag_all, is.finite(Value) & Value > 0 & Year == 2019)
   rval = data.frame(PJNZ = dat$pjnz,
+                    Model = dat$inci_model,
                     Years = nrow(sset_mort),
                     Diag  = nrow(sset_diag) > 0)
   colnames(rval) = cnames

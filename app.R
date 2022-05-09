@@ -62,7 +62,7 @@ server = function(input, output, session) {
     })
     
     xlsx_filename = reactive({
-      filename = sprintf("ConcEpid_Input_Par_Extract_%s.xlsx", Sys.Date())
+      filename = sprintf("ConcEpid_Input_Parameter_Extract_%s.xlsx", Sys.Date())
       return(filename)
     })
     

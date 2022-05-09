@@ -37,7 +37,7 @@ server = function(input, output, session) {
     
     output$pjnz_name = renderTable({
         rval = data.frame(PJNZ=pjnz_meta()$name)
-        colnames(rval) = c("PJNZs uploaded")
+        colnames(rval) = c(sprintf("%d PJNZs uploaded", nrow(rval)))
         return(rval)
     })
     
@@ -61,9 +61,14 @@ server = function(input, output, session) {
       enable("download_xlsx")  
     })
     
+    xlsx_filename = reactive({
+      filename = sprintf("ConcEpid_Input_Par_Extract_%s.xlsx", Sys.Date())
+      return(filename)
+    })
+    
     output$download_xlsx = downloadHandler(
-        filename = "csavr-custom-extract.xlsx",
-        content = function(xlsx_name) {saveWorkbook(summary_xlsx(), file=xlsx_name, overwrite=TRUE)}
+      filename = xlsx_filename(),
+      content = function(xlsx_name) {saveWorkbook(summary_xlsx(), file=xlsx_name, overwrite=TRUE)}
     )
 }
 

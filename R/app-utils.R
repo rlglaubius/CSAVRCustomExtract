@@ -4,7 +4,7 @@ library(SpectrumUtils)
 
 process_pjnzs = function(data_list) {
   tabi = 0
-  ntab = 17
+  ntab = 23
 
   fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
@@ -15,6 +15,13 @@ process_pjnzs = function(data_list) {
   fm_diag_cd4 = prepare_frame_cd4(data_list, "diag_cd4")
   fm_diag_mig = prepare_frame_age(data_list, "migr")
   
+  fm_adult_init = prepare_frame_sex(data_list, "art_adult_init")
+  fm_adult_reup = prepare_frame_all(data_list, "art_adult_reup")
+  fm_adult_ltfu = prepare_frame_all(data_list, "art_adult_ltfu")
+  fm_child_init = prepare_frame_all(data_list, "art_child_init", age="0-14")
+  fm_child_reup = prepare_frame_all(data_list, "art_child_reup", age="0-14")
+  fm_child_ltfu = prepare_frame_all(data_list, "art_child_ltfu", age="0-14")
+  
   wb = createWorkbook()
   addtab(wb, fm_diag_all, "CaseTot",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_diag_sex, "CaseM-F",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
@@ -24,7 +31,7 @@ process_pjnzs = function(data_list) {
   addtab(wb, fm_mort_age, "DeathAge", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_diag_cd4, "CD4",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_diag_mig, "ImmigrPrevPos", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-
+  
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
   addtab(wb, inci.frame, inci.tname, 4)
@@ -58,6 +65,13 @@ process_pjnzs = function(data_list) {
   add_crosscheck_sex(wb, "CheckDeathAge",      "DeathM-F", "DeathAge",      fm_mort_sex, fm_mort_age); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  
+  addtab(wb, fm_adult_init, "AdultART_Init",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_adult_reup, "AdultART_Reinit",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_adult_ltfu, "AdultART_LTFU",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_init, "ChildART_Init",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_reup, "ChildART_Restart", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_ltfu, "ChildART_LTFU",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   return(wb)
 }
@@ -118,7 +132,14 @@ extract_pjnz_data = function(pjnz_full) {
     epp_adj_can = dp.inputs.epp.adjustment.enabled(dp, direction="long"),
     epp_adj_max = dp.inputs.epp.adjustment.cap(dp, direction="long"),
     
-    kos_source = dp.inputs.kos.source(dp, direction="long")
+    kos_source = dp.inputs.kos.source(dp, direction="long"),
+    
+    art_adult_init = dp.inputs.adult.art.initiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    art_adult_reup = dp.inputs.adult.art.reinitiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    art_adult_ltfu = dp.inputs.adult.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    art_child_init = dp.inputs.child.art.initiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    art_child_reup = dp.inputs.child.art.reinitiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    art_child_ltfu = dp.inputs.child.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
   )
   return(rval)
 }
@@ -154,10 +175,10 @@ addtab = function(workbook, tabdata, tabname, freezeRows=NULL) {
   }
 }
 
-prepare_frame_all = function(pjnz_data, indicator, keep_zeros=TRUE) {
+prepare_frame_all = function(pjnz_data, indicator, keep_zeros=TRUE, age="15+") {
   meta = prepare_metadata(pjnz_data)
   meta$Sex = "Male+Female"
-  meta$Age = "15+"
+  meta$Age = age
   data_long = prepare_flatdata(pjnz_data, indicator)
   if (!keep_zeros) {
     data_long$Value[data_long$Value==0] = NA

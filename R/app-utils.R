@@ -4,7 +4,7 @@ library(SpectrumUtils)
 
 process_pjnzs = function(data_list) {
   tabi = 0
-  ntab = 25
+  ntab = 23
 
   fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
@@ -13,7 +13,6 @@ process_pjnzs = function(data_list) {
   fm_mort_sex = prepare_frame_sex(data_list, "mort_sex")
   fm_mort_age = prepare_frame_age(data_list, "mort_age")
   fm_diag_cd4 = prepare_frame_cd4(data_list, "diag_cd4")
-  fm_diag_mig = prepare_frame_age(data_list, "migr")
   
   fm_adult_init = prepare_frame_sex(data_list, "art_adult_init")
   fm_adult_reup = prepare_frame_all(data_list, "art_adult_reup")
@@ -34,7 +33,6 @@ process_pjnzs = function(data_list) {
   addtab(wb, fm_mort_sex, "DeathM-F", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_mort_age, "DeathAge", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_diag_cd4, "CD4",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_diag_mig, "ImmigrPrevPos", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
@@ -68,7 +66,6 @@ process_pjnzs = function(data_list) {
   add_crosscheck_all(wb, "CheckDeathM-F",      "DeathTot", "DeathM-F",      fm_mort_all, fm_mort_sex); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   add_crosscheck_sex(wb, "CheckDeathAge",      "DeathM-F", "DeathAge",      fm_mort_sex, fm_mort_age); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   addtab(wb, fm_adult_init, "AdultART_Init",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_adult_reup, "AdultART_Reinit",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
@@ -143,8 +140,6 @@ extract_pjnz_data = function(pjnz_full) {
     mort_all = mort_all,
     mort_sex = mort_sex,
     mort_age = mort_age,
-
-    migr = dp.inputs.csavr.migr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     
     frr_loc = dp.inputs.hiv.frr.location(dp, direction="long"),
     

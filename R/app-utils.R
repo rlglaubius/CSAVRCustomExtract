@@ -34,31 +34,30 @@ process_pjnzs = function(data_list) {
   addtab(wb, fm_mort_age, "DeathAge", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   addtab(wb, fm_diag_cd4, "CD4",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
+  addtab(wb, prepare_frame_meta(data_list, check_opt_state), "Parameters", 4); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  
   inci.tname = "IncidTrendRule"
   inci.frame = prepare_frame_meta(data_list, check_incidence)
   addtab(wb, inci.frame, inci.tname, 4)
-  ci = 1 + ncol(inci.frame)
-  for (ri in 1:nrow(inci.frame)) {
-    expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=8,%s%d>=2019),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
-    writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
-    conditionalFormatting(wb, sheet=inci.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
-  }
-  writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
-  tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-
-  addtab(wb, prepare_frame_meta(data_list, check_opt_state), "Parameters", 4)
+  # ci = 1 + ncol(inci.frame)
+  # for (ri in 1:nrow(inci.frame)) {
+  #   expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=8,%s%d>=2019),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+  #   writeFormula(wb, sheet=inci.tname, x=expr, startCol=ci, startRow=ri+1)
+  #   conditionalFormatting(wb, sheet=inci.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
+  # }
+  # writeData(wb, sheet=inci.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 incidence trend:", startCol=ci, startRow=1)
   tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
 
   know.tname = "KOSTrendRule"
   know.frame = prepare_frame_meta(data_list, check_knowledge)
   addtab(wb, know.frame, know.tname, 4)
-  ci = 1 + ncol(know.frame)
-  for (ri in 1:nrow(know.frame)) {
-    expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=1,%s%d),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
-    writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
-    conditionalFormatting(wb, sheet=know.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
-  }
-  writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
+  # ci = 1 + ncol(know.frame)
+  # for (ri in 1:nrow(know.frame)) {
+  #   expr = sprintf("IF(%s%d=\"CSAVR\",AND(%s%d>=1,%s%d),\"NA\")", int2col(ci-3), ri+1, int2col(ci-2), ri+1, int2col(ci-1), ri+1)
+  #   writeFormula(wb, sheet=know.tname, x=expr, startCol=ci, startRow=ri+1)
+  #   conditionalFormatting(wb, sheet=know.tname, cols=ci, rows=ri+1, rule=sprintf("%s%d==FALSE", int2col(ci), ri+1), type="expression")
+  # }
+  # writeData(wb, sheet=know.tname, x="Meets the rule for a UNAIDS-publishable 2010-2021 Knowledge-of-Status trend:", startCol=ci, startRow=1)
   tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   add_crosscheck_all(wb, "CheckCaseM-F",       "CaseTot",  "CaseM-F",       fm_diag_all, fm_diag_sex); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
@@ -240,36 +239,49 @@ prepare_frame_cd4 = function(pjnz_data, indicator) {
 ## Check if there is sufficient data to estimate incidence
 check_incidence = function(dat) {
   first_year = 1990
-  final_year = 2021
+  final_year = 2030
   cnames = c("PJNZ",
              "Incidence option",
              sprintf("Years of death data during %s-%s", first_year, final_year),
-             sprintf("Latest death data data available during %s-%s", first_year, final_year))
+             sprintf("Latest death data data available during %s-%s", first_year, final_year),
+             sprintf("Years of new diagnosis data during %s-%s", first_year, final_year),
+             sprintf("Latest new diagnosis data available during %s-%s", first_year, final_year))
   
-  sset = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  mort = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  diag = subset(dat$diag_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  
   rval = data.frame(PJNZ  = dat$pjnz,
                     Model = dat$inci_model,
-                    Years = nrow(sset),
-                    Final = ifelse(nrow(sset) > 0, max(sset$Year), NA))
+                    MortYears = nrow(mort),
+                    MortFinal = ifelse(nrow(mort) > 0, max(mort$Year), NA),
+                    DiagYears = nrow(diag),
+                    DiagFinal = ifelse(nrow(diag) > 0, max(diag$Year), NA))
   colnames(rval) = cnames
   return(rval)
 }
 
 ## Check if there is sufficient data to estimate knowledge of status
+## Changes to logic for check_incidence and check_knowledge by EK via email, 2024-06-14, result
+## in identical logic for check_incidence and check_knowledge, applied over different timeframes.
 check_knowledge = function(dat) {
   first_year = 2019
-  final_year = 2021
+  final_year = 2030
   cnames = c("PJNZ",
              "Incidence option",
-             sprintf("Years of deaths data during %s-%s", first_year, final_year),
-             "New diagnoses entered in 2019?")
+             sprintf("Years of death data during %s-%s", first_year, final_year),
+             sprintf("Latest death data data available during %s-%s", first_year, final_year),
+             sprintf("Years of new diagnosis data during %s-%s", first_year, final_year),
+             sprintf("Latest new diagnosis data available during %s-%s", first_year, final_year))
   
-  sset_mort = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
-  sset_diag = subset(dat$diag_all, is.finite(Value) & Value > 0 & Year == 2019)
-  rval = data.frame(PJNZ = dat$pjnz,
+  mort = subset(dat$mort_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  diag = subset(dat$diag_all, is.finite(Value) & Value > 0 & Year >= first_year & Year <= final_year)
+  
+  rval = data.frame(PJNZ  = dat$pjnz,
                     Model = dat$inci_model,
-                    Years = nrow(sset_mort),
-                    Diag  = nrow(sset_diag) > 0)
+                    MortYears = nrow(mort),
+                    MortFinal = ifelse(nrow(mort) > 0, max(mort$Year), NA),
+                    DiagYears = nrow(diag),
+                    DiagFinal = ifelse(nrow(diag) > 0, max(diag$Year), NA))
   colnames(rval) = cnames
   return(rval)
 }

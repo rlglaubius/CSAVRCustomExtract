@@ -4,7 +4,7 @@ library(SpectrumUtils)
 
 process_pjnzs = function(data_list) {
   tabi = 0
-  ntab = 23
+  ntab = 25
 
   fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
@@ -21,6 +21,10 @@ process_pjnzs = function(data_list) {
   fm_child_init = prepare_frame_all(data_list, "art_child_init", age="0-14")
   fm_child_reup = prepare_frame_all(data_list, "art_child_reup", age="0-14")
   fm_child_ltfu = prepare_frame_all(data_list, "art_child_ltfu", age="0-14")
+  
+  fm_irr_sex = prepare_frame_all(data_list, "irr_sex")
+  
+  fm_valid_art_mort = prepare_frame_all(data_list, "art_deaths")
   
   wb = createWorkbook()
   addtab(wb, fm_diag_all, "CaseTot",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
@@ -66,12 +70,16 @@ process_pjnzs = function(data_list) {
   add_crosscheck_all(wb, "CheckCaseCD4",       "CaseTot",  "CD4",           fm_diag_all, fm_diag_cd4); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   add_crosscheck_sex(wb, "CheckImmigrPrevPos", "CaseM-F",  "ImmigrPrevPos", fm_diag_sex, fm_diag_mig); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
-  addtab(wb, fm_adult_init, "AdultART_Init",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_adult_reup, "AdultART_Reinit",  6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_adult_ltfu, "AdultART_LTFU",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_child_init, "ChildART_Init",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_child_reup, "ChildART_Restart", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
-  addtab(wb, fm_child_ltfu, "ChildART_LTFU",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_adult_init, "AdultART_Init",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_adult_reup, "AdultART_Reinit",    6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_adult_ltfu, "AdultART_Interrupt", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_init, "ChildART_Init",      6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_reup, "ChildART_Restart",   6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  addtab(wb, fm_child_ltfu, "ChildART_Interrupt", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  
+  addtab(wb, fm_valid_art_mort, "AllCauseDeathsART", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  
+  addtab(wb, fm_irr_sex, "SexIRRs", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   return(wb)
 }
@@ -98,6 +106,19 @@ extract_pjnz_data = function(pjnz_full) {
   geo_info = extract.geo.info(pj)
   proj_name = extract.proj.name(pj)
 
+  mort_src = dp.inputs.csavr.deaths.source(dp)
+  mort_all = dp.inputs.csavr.deaths(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+  mort_sex = dp.inputs.csavr.deaths.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+  mort_age = dp.inputs.csavr.deaths.sex.age(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+  
+  mort_all = mort_all[mort_all$Source == mort_src,]
+  mort_sex = mort_sex[mort_sex$Source == mort_src,]
+  mort_age = mort_age[mort_age$Source == mort_src,]
+  
+  mort_all$Source = NULL
+  mort_sex$Source = NULL
+  mort_age$Source = NULL
+  
   rval = list(
     pjnz = proj_name,
     country = country_name(geo_info$iso.code),
@@ -119,15 +140,18 @@ extract_pjnz_data = function(pjnz_full) {
     diag_age = dp.inputs.csavr.diagnoses.sex.age(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     diag_cd4 = dp.inputs.csavr.diagnoses.cd4(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
 
-    mort_all = dp.inputs.csavr.deaths(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
-    mort_sex = dp.inputs.csavr.deaths.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
-    mort_age = dp.inputs.csavr.deaths.sex.age(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    mort_all = mort_all,
+    mort_sex = mort_sex,
+    mort_age = mort_age,
 
     migr = dp.inputs.csavr.migr.diagnoses(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     
     frr_loc = dp.inputs.hiv.frr.location(dp, direction="long"),
     
     mort_mult = dp.inputs.adult.hiv.mortality.art.scale(dp, direction="long"),
+    
+    art_effect = dp.inputs.art.transmission.reduction(dp, direction="long"),
+    art_deaths = dp.inputs.deaths.art.allcause(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     
     epp_adj_can = dp.inputs.epp.adjustment.enabled(dp, direction="long"),
     epp_adj_max = dp.inputs.epp.adjustment.cap(dp, direction="long"),
@@ -139,7 +163,9 @@ extract_pjnz_data = function(pjnz_full) {
     art_adult_ltfu = dp.inputs.adult.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     art_child_init = dp.inputs.child.art.initiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     art_child_reup = dp.inputs.child.art.reinitiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
-    art_child_ltfu = dp.inputs.child.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+    art_child_ltfu = dp.inputs.child.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    
+    irr_sex = dp.inputs.irr.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
   )
   return(rval)
 }
@@ -269,7 +295,8 @@ check_opt_state = function(dat) {
              "On-ART mortality scale factor",
              "HIV FRR local adjustment factor",
              "EPP: AIM can adjust incidence?",
-             "EPP: Incidence adjustment cap")
+             "EPP: Incidence adjustment cap",
+             "EPP: ART effect on HIV transmission")
   irr_opts = dat$csavr_irrs[dat$csavr_irrs$Model == dat$inci_curve,]
 
   rval = data.frame(PJNZ    = dat$pjnz,
@@ -287,7 +314,8 @@ check_opt_state = function(dat) {
                     MortScale  = dat$mort_mult,
                     FRRLocal   = dat$frr_loc,
                     CanAdjust  = dat$epp_adj_can,
-                    MaxAdjust  = dat$epp_adj_max
+                    MaxAdjust  = dat$epp_adj_max,
+                    ARTEffect  = dat$art_effect
                     )
   colnames(rval) = cnames
   return(rval)

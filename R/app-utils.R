@@ -4,7 +4,7 @@ library(SpectrumUtils)
 
 process_pjnzs = function(data_list) {
   tabi = 0
-  ntab = 23
+  ntab = 24
 
   fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
@@ -22,6 +22,7 @@ process_pjnzs = function(data_list) {
   fm_child_ltfu = prepare_frame_all(data_list, "art_child_ltfu", age="0-14")
   
   fm_irr_sex = prepare_frame_all(data_list, "irr_sex")
+  fm_migr_hiv = prepare_frame_age(data_list, "migr_hiv")
   
   fm_valid_art_mort = prepare_frame_all(data_list, "art_deaths")
   
@@ -76,6 +77,8 @@ process_pjnzs = function(data_list) {
   addtab(wb, fm_valid_art_mort, "AllCauseDeathsART", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   addtab(wb, fm_irr_sex, "SexIRRs", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
+  
+  addtab(wb, fm_migr_hiv, "MigrHIV", 6); tabi=tabi+1; incProgress(1/ntab, detail=sprintf("Tab %s of %d", tabi, ntab))
   
   return(wb)
 }
@@ -159,7 +162,9 @@ extract_pjnz_data = function(pjnz_full) {
     art_child_reup = dp.inputs.child.art.reinitiations(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     art_child_ltfu = dp.inputs.child.art.ltfu(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
     
-    irr_sex = dp.inputs.irr.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
+    irr_sex = dp.inputs.irr.sex(dp, direction="long", first.year=yr_bgn, final.year=yr_end),
+    
+    migr_hiv = dp.inputs.migr.plhiv(dp, direction="long", first.year=yr_bgn, final.year=yr_end)
   )
   return(rval)
 }
@@ -222,8 +227,11 @@ prepare_frame_sex = function(pjnz_data, indicator) {
 }
 
 prepare_frame_age = function(pjnz_data, indicator) {
+  lab_age = c(sprintf("%d-%d", seq(0, 75, 5), seq(4, 79, 5)), "50+", "80+")
+  
   meta = prepare_metadata(pjnz_data)
   data_long = prepare_flatdata(pjnz_data, indicator)
+  data_long$Age = factor(data_long$Age, levels=lab_age)
   data_wide = reshape2::dcast(data_long, PJNZ+Sex+Age~Year, value.var="Value")
   return(dplyr::left_join(meta, data_wide, by=c("PJNZ")))
 }

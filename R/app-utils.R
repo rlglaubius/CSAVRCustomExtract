@@ -6,10 +6,10 @@ process_pjnzs = function(data_list) {
   tabi = 0
   ntab = 24
 
-  fm_diag_all = prepare_frame_all(data_list, "diag_all", keep_zeros=FALSE)
+  fm_diag_all = prepare_frame_all(data_list, "diag_all")
   fm_diag_sex = prepare_frame_sex(data_list, "diag_sex")
   fm_diag_age = prepare_frame_age(data_list, "diag_age")
-  fm_mort_all = prepare_frame_all(data_list, "mort_all", keep_zeros=FALSE)
+  fm_mort_all = prepare_frame_all(data_list, "mort_all")
   fm_mort_sex = prepare_frame_sex(data_list, "mort_sex")
   fm_mort_age = prepare_frame_age(data_list, "mort_age")
   fm_diag_cd4 = prepare_frame_cd4(data_list, "diag_cd4")
@@ -223,7 +223,7 @@ prepare_frame_sex = function(pjnz_data, indicator) {
   data_join[,1:6] = data_join[,c("PJNZ", "ISO3", "Country", "SNU", "Sex", "Age")]
   colnames(data_join)[1:6] = c("PJNZ", "ISO3", "Country", "SNU", "Sex", "Age")
   
-  return(data_join)
+  return(data_join[order(data_join$Sex),])
 }
 
 prepare_frame_age = function(pjnz_data, indicator) {
@@ -233,7 +233,8 @@ prepare_frame_age = function(pjnz_data, indicator) {
   data_long = prepare_flatdata(pjnz_data, indicator)
   data_long$Age = factor(data_long$Age, levels=lab_age)
   data_wide = reshape2::dcast(data_long, PJNZ+Sex+Age~Year, value.var="Value")
-  return(dplyr::left_join(meta, data_wide, by=c("PJNZ")))
+  data_wide = dplyr::left_join(meta, data_wide, by=c("PJNZ"))
+  return(data_wide[order(data_wide$Sex),])
 }
 
 prepare_frame_cd4 = function(pjnz_data, indicator) {
